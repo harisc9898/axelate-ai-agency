@@ -3,6 +3,7 @@ services:
     name: leadgen-ai-api
     env: python
     plan: free
+    pythonVersion: "3.11.9"
     buildCommand: |
       pip install -r requirements.txt
       apt-get update -qq && apt-get install -y ffmpeg fonts-dejavu-core
