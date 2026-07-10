@@ -13,7 +13,9 @@ STACK (all free tier):
   Voice    — Edge-TTS (Microsoft neural voices, free forever)
   Images   — Cloudflare Workers AI FLUX.1-schnell (10k neurons/day free)
   Video    — FFmpeg Ken Burns + ASS captions
-  Carousel — FLUX backgrounds + Pillow text compositing
+  Carousel — Pillow typography only (black/red brand palette, no photos —
+             matches the proven bold-text-carousel format used by top
+             coaching/agency accounts)
   Storage  — Supabase (Postgres + Storage, free tier, persistent)
   Hosting  — Render (backend) + Vercel (frontend), both free
 
@@ -70,10 +72,18 @@ pipeline_status: dict = {
 
 VID_W, VID_H, CLIP_FPS = 720, 1280, 25
 CAR_W, CAR_H = 1080, 1350          # Instagram carousel 4:5
-CAR_GEN_W, CAR_GEN_H = 768, 960    # FLUX generation size, upscaled after
 
 FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_REG  = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+FONT_SERIF_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
+FONT_SERIF_REG  = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"
+
+# Carousel brand palette — typography-only design (no photos), alternating
+# background per slide, inspired by top-performing coach/agency carousels.
+CAROUSEL_PALETTE = {
+    "black": {"bg": (10, 9, 11), "text": (247, 243, 235), "accent": (196, 30, 58)},
+    "red":   {"bg": (139, 20, 30), "text": (247, 243, 235), "accent": (10, 9, 11)},
+}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CONTENT STRATEGY — pillars, business context, services
@@ -364,47 +374,74 @@ Return ONLY valid JSON, no markdown, no backticks, nothing outside the JSON:
 }}"""
 
 
+HOOK_PATTERNS = [
+    "A confident 'how real [role] actually do X' framing that implies most people are doing it wrong",
+    "A short, blunt cause-and-effect: 'I stopped/didn't do [action] for [specific timeframe]. [Surprising result]. Here's why.'",
+    "A direct callout of a common bad habit: 'Stop saying/doing [common thing]. Say/do [better thing] instead.'",
+    "A numbered-reasons hook: '[N] reasons your [thing] isn't working.'",
+    "A humbling personal-stakes opener: 'I made a lot of mistakes before [milestone].'",
+    "An uncomfortable-truth confession using a specific number: 'I had [specific number] and made $[specific number]. Here's the uncomfortable truth.'",
+    "A myth-correction: 'Your [thing] is doing [surface-level metric]. That's not the real problem. It's [real problem].'",
+]
+
+
 def build_carousel_prompt(pillar_key: str) -> str:
     p = PILLARS[pillar_key]
     service = random.choice(SERVICES)
+    hook_pattern = random.choice(HOOK_PATTERNS)
     return f"""{BUSINESS_CONTEXT}
 
 CONTENT PILLAR: {p['label']}
 ANGLE: {p['angle']}
 FEATURED SERVICE (weave in naturally, don't force it): {service}
 
-Write a 5-7 slide Instagram carousel post. Carousels get saved/shared when
-they're genuinely useful — write it like a mini-guide, not an ad.
+Write a 5-7 slide Instagram carousel in the style of top-performing
+business/coaching carousel accounts: bold typography only, ONE idea per
+slide, no fluff, every slide creates a reason to swipe to the next.
+
+HOOK STYLE FOR SLIDE 1 (use this exact pattern, written fresh — do not reuse
+these instructions as literal text, write an original line following the
+pattern): {hook_pattern}
 
 RULES:
-1. Slide 1 (cover): a bold, scroll-stopping headline (max 10 words) plus a
-   short subheading (max 12 words).
-2. Slides 2 to second-last: one clear point per slide — a short heading
-   (max 6 words) and a short body (max 18 words). Genuinely useful/specific,
-   not generic fluff.
-3. Final slide: a CTA telling the reader to comment ONE specific keyword to
-   get more info via DM.
-4. trigger_word: ONE short uppercase word or 2-word phrase, topic-relevant.
+1. Slide 1 (cover): the hook headline (max 12 words, punchy, no period at
+   the end) plus an optional short subheading/teaser (max 8 words, e.g.
+   "Here's why" / "Here's the breakdown" / "Swipe for the full story").
+   Every word must earn its place — cut anything generic.
+2. Slides 2 to second-last: one sharp idea per slide. Short heading (max 6
+   words) + short body (max 16 words). Be specific and slightly
+   contrarian/counter-intuitive where possible — generic advice does not
+   get saved. Each slide should make the reader want to know what's next.
+3. Second-to-last slide should land the core insight/payoff clearly enough
+   that someone screenshotting just that slide would still get value
+   (drives saves).
+4. Final slide: a direct CTA telling the reader to comment ONE specific
+   keyword to get more info via DM. Make it feel like a natural next step,
+   not a hard sell.
+5. trigger_word: ONE short uppercase word or 2-word phrase, topic-relevant.
    Must exactly match the CTA on the final slide.
-5. Also write an Instagram caption (short, line breaks, repeats the CTA) and
-   the cta_dm_message auto-sent when someone comments the trigger word
-   (thank them, one-line value prop, end with "Book a free call: {{LINK}}").
-6. Each slide needs an image_prompt: modern business/tech visual (office,
-   phone, dashboard, chat bubbles) — environment/screen-focused, no detailed
-   faces, no text in the image itself (text is added separately).
-7. hashtags: 15-20 tags mixing broad business/entrepreneur tags with niche
-   AI-automation tags, space-separated, include #.
+6. caption: 3-5 short lines (line breaks, not a wall of text). Re-hook in
+   line 1 (someone should be able to read just the first line in the feed
+   before "more" and still be intrigued). End with an explicit prompt to
+   save the post for later AND the comment-keyword CTA.
+7. hashtags: 15-20 tags, space-separated, include #. Mix: 4-5 broad
+   business/entrepreneur tags (large reach), 6-8 niche AI-automation/agency
+   tags (targeted reach), 3-4 small/specific long-tail tags (low competition,
+   higher chance of ranking). Avoid ultra-generic single-word tags like
+   #love or #instagood — they dilute relevance.
+8. cta_dm_message: auto-DM sent when someone comments the trigger word —
+   thank them, one-line value prop, end with "Book a free call: {{LINK}}".
 
 Return ONLY valid JSON, no markdown, no backticks, nothing outside the JSON:
 {{
   "hook": "Cover headline",
-  "subheading": "Cover subheading",
+  "subheading": "Cover subheading or teaser",
   "slides": [
-    {{"heading": "Point 1", "body": "short specific point", "image_prompt": "..."}},
-    {{"heading": "Point 2", "body": "short specific point", "image_prompt": "..."}},
-    {{"heading": "Point 3", "body": "short specific point", "image_prompt": "..."}},
-    {{"heading": "Point 4", "body": "short specific point", "image_prompt": "..."}},
-    {{"heading": "CALL TO ACTION", "body": "Comment TRIGGERWORD for...", "image_prompt": "..."}}
+    {{"heading": "Point 1", "body": "short specific point"}},
+    {{"heading": "Point 2", "body": "short specific point"}},
+    {{"heading": "Point 3", "body": "short specific point"}},
+    {{"heading": "Point 4", "body": "short specific point"}},
+    {{"heading": "CALL TO ACTION", "body": "Comment TRIGGERWORD for..."}}
   ],
   "caption": "line 1\\nline 2\\nline 3",
   "hashtags": "#tag1 #tag2 #tag3",
@@ -717,7 +754,10 @@ def assemble_video(clips: list, voice_p: str, music_p: Optional[str], ass_p: str
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CAROUSEL COMPOSITING (Pillow) — FLUX background + text overlay
+# CAROUSEL COMPOSITING (Pillow) — pure typography, no photos
+# Alternating black/red slides, bold serif headline, centered composition —
+# matches the format proven to perform on info/coaching accounts (one idea
+# per slide, cliffhanger into the next, save-worthy final insight slide).
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def _wrap_text(draw, text, font, max_width):
     words, lines, cur = text.split(), [], ""
@@ -734,39 +774,57 @@ def _wrap_text(draw, text, font, max_width):
     return lines
 
 
-def compose_carousel_slide(bg_path: str, heading: str, body: str, idx: int, total: int, out_path: str, is_cover: bool = False):
+def compose_carousel_slide(heading: str, body: str, idx: int, total: int, out_path: str,
+                            is_cover: bool = False, is_cta: bool = False, subheading: str = ""):
     from PIL import Image, ImageDraw, ImageFont
-    img = Image.open(bg_path).convert("RGB").resize((CAR_W, CAR_H))
-    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    odraw = ImageDraw.Draw(overlay)
-    top = int(CAR_H * 0.32)
-    for y in range(top, CAR_H):
-        alpha = int(215 * (y - top) / (CAR_H - top))
-        odraw.line([(0, y), (CAR_W, y)], fill=(10, 8, 30, min(alpha, 215)))
-    img = Image.alpha_composite(img.convert("RGBA"), overlay)
+
+    if is_cover or is_cta:
+        palette = CAROUSEL_PALETTE["black"]
+    else:
+        palette = CAROUSEL_PALETTE["red"] if idx % 2 == 1 else CAROUSEL_PALETTE["black"]
+
+    img = Image.new("RGB", (CAR_W, CAR_H), palette["bg"])
     draw = ImageDraw.Draw(img)
 
-    heading_font = ImageFont.truetype(FONT_BOLD, 72 if is_cover else 56)
-    body_font = ImageFont.truetype(FONT_REG, 36 if is_cover else 34)
-    small_font = ImageFont.truetype(FONT_REG, 28)
+    heading_font = ImageFont.truetype(FONT_SERIF_BOLD, 78 if is_cover else 62)
+    sub_font = ImageFont.truetype(FONT_SERIF_BOLD, 34)
+    body_font = ImageFont.truetype(FONT_REG, 34)
+    small_font = ImageFont.truetype(FONT_REG, 26)
 
-    max_w = CAR_W - 140
-    h_lines = _wrap_text(draw, heading.upper(), heading_font, max_w)
-    b_lines = _wrap_text(draw, body, body_font, max_w)
+    max_w = CAR_W - 160
+    h_lines = _wrap_text(draw, heading, heading_font, max_w)
+    b_lines = _wrap_text(draw, body, body_font, max_w) if body else []
 
-    y = CAR_H * 0.58
+    line_h = heading_font.size + 12
+    block_h = len(h_lines) * line_h
+    if b_lines:
+        block_h += 24 + len(b_lines) * (body_font.size + 10)
+    if is_cover and subheading:
+        block_h += 20 + sub_font.size
+
+    y = (CAR_H - block_h) / 2
     for line in h_lines:
-        draw.text((70, y), line, font=heading_font, fill=(255, 255, 255, 255))
-        y += heading_font.size + 8
-    y += 14
-    for line in b_lines:
-        draw.text((70, y), line, font=body_font, fill=(220, 220, 235, 255))
-        y += body_font.size + 6
+        draw.text((80, y), line, font=heading_font, fill=palette["text"])
+        y += line_h
+    if is_cover and subheading:
+        y += 20
+        draw.text((80, y), subheading, font=sub_font, fill=palette["accent"])
+        y += sub_font.size
+    if b_lines:
+        y += 24
+        for line in b_lines:
+            draw.text((80, y), line, font=body_font, fill=palette["text"])
+            y += body_font.size + 10
 
-    # slide counter + brand tag
-    draw.text((70, 50), f"{idx + 1}/{total}", font=small_font, fill=(255, 255, 255, 200))
+    if not is_cover:
+        draw.rectangle([80, 60, 130, 66], fill=palette["accent"])
+
+    if idx < total - 1:
+        draw.text((CAR_W - 150, 55), "swipe →", font=small_font, fill=palette["accent"])
+
+    draw.text((80, 55), f"{idx + 1}/{total}", font=small_font, fill=palette["text"])
     handle_w = draw.textlength(AGENCY_HANDLE, font=small_font)
-    draw.text((CAR_W - handle_w - 70, CAR_H - 60), AGENCY_HANDLE, font=small_font, fill=(255, 255, 255, 200))
+    draw.text((CAR_W - handle_w - 80, CAR_H - 70), AGENCY_HANDLE, font=small_font, fill=palette["text"])
 
     img.convert("RGB").save(out_path, quality=92)
 
@@ -843,20 +901,27 @@ def run_generate_carousel(pillar: Optional[str], post_id: Optional[str] = None):
     session = WORK_DIR / f"car_{ts}"
     session.mkdir(exist_ok=True)
     try:
-        pipeline_status.update(step="Writing carousel copy...", step_index=1, total_steps=4, format="carousel", error=None)
+        pipeline_status.update(step="Writing carousel copy...", step_index=1, total_steps=3, format="carousel", error=None)
         data = generate_carousel_content(pillar)
         slides = data.get("slides", [])[:7]
 
-        pipeline_status.update(step="Generating slide art...", step_index=2)
+        pipeline_status.update(step="Designing slides...", step_index=2)
+        slide_defs = [{"heading": data.get("hook", ""), "body": "", "is_cover": True,
+                       "subheading": data.get("subheading", "")}]
+        for s in slides:
+            slide_defs.append({"heading": s.get("heading", ""), "body": s.get("body", ""), "is_cover": False})
+        if len(slide_defs) > 1:
+            slide_defs[-1]["is_cta"] = True
+
+        total = len(slide_defs)
         slide_urls = []
-        for i, slide in enumerate(slides):
-            bg_path = str(session / f"bg_{i}.jpg")
-            prompt = _biz_image_prompt(slide.get("image_prompt", "modern office technology"))
-            generate_image(prompt, bg_path, CAR_GEN_W, CAR_GEN_H, label=slide.get("heading", ""))
-            if not _verify_image(bg_path):
-                generate_cinematic_fallback(bg_path, CAR_GEN_W, CAR_GEN_H, slide.get("heading", ""))
+        for i, sd in enumerate(slide_defs):
             out_path = str(session / f"slide_{i}.jpg")
-            compose_carousel_slide(bg_path, slide.get("heading", ""), slide.get("body", ""), i, len(slides), out_path, is_cover=(i == 0))
+            compose_carousel_slide(
+                sd.get("heading", ""), sd.get("body", ""), i, total, out_path,
+                is_cover=sd.get("is_cover", False), is_cta=sd.get("is_cta", False),
+                subheading=sd.get("subheading", ""),
+            )
             slide_urls.append(out_path)
 
         pipeline_status.update(step="Saving to review queue...", step_index=3)
